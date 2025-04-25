@@ -11,3 +11,12 @@ services:
       MONGO_INITDB_DATABASE: scriptdb
     volumes:
       - ./mongo_data:/data/db
+  redis:
+    image: redis:7.2    # 选择官方最新版
+    container_name: scriptdb_redis
+    ports:
+      - "6379:6379"     # 把容器里的6379端口映射到本地
+    volumes:
+      - ./redis_data:/data # 持久化数据
+    restart: unless-stopped
+

@@ -6,19 +6,12 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jellyqwq/data-script-manager/backend/db"
+	"github.com/jellyqwq/data-script-manager/backend/models"
 	"github.com/jellyqwq/data-script-manager/backend/scheduler"
+	"github.com/jellyqwq/data-script-manager/backend/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-type Schedule struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	ScriptID  string             `bson:"script_id" json:"script_id"`
-	Cron      string             `bson:"cron" json:"cron"`
-	Enabled   bool               `bson:"enabled" json:"enabled"`
-	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
-	NextRun   time.Time          `bson:"next_run" json:"next_run"`
-}
 
 // 获取所有调度任务
 func GetSchedules(c *fiber.Ctx) error {
@@ -29,7 +22,7 @@ func GetSchedules(c *fiber.Ctx) error {
 			"error": "查询失败",
 		})
 	}
-	var list []Schedule
+	var list []models.ScheduleItem
 	if err := cursor.All(context.TODO(), &list); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "数据解析失败",
@@ -44,6 +37,7 @@ func AddSchedule(c *fiber.Ctx) error {
 		ScriptID string `json:"script_id"`
 		Cron     string `json:"cron"`
 	}
+	uid := utils.GetUserIDFromToken(c)
 
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -61,10 +55,10 @@ func AddSchedule(c *fiber.Ctx) error {
 
 	sched := bson.M{
 		"script_id":  scriptOID,
+		"user_id":    uid,
 		"cron":       input.Cron,
 		"enabled":    true,
 		"created_at": time.Now(),
-		"next_run":   time.Now().Add(1 * time.Hour),
 	}
 
 	col := db.Mongo.Database("scriptdb").Collection("schedules")

@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineExpose } from 'vue'
 import axios from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -69,6 +69,7 @@ const selectedLevel = ref('')
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
+const logTimer = ref(null)
 
 const loadScripts = async () => {
   try {
@@ -138,7 +139,24 @@ const clearLogs = async () => {
 onMounted(() => {
   loadScripts()
   loadLogs()
-  setInterval(loadLogs, 10000) // 每 10 秒自动刷新
+  logTimer.value = setInterval(loadLogs, 10000) // 每 10 秒自动刷新
+})
+
+onBeforeUnmount(() => {
+  if (logTimer.value) {
+    clearInterval(logTimer.value)
+    logTimer.value = null
+  }
+})
+
+function stopLogTimer() {
+  if (logTimer.value) {
+    clearInterval(logTimer.value)
+    logTimer.value = null
+  }
+}
+defineExpose({
+  stopLogTimer
 })
 </script>
 

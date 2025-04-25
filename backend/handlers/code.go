@@ -51,8 +51,15 @@ func SendCode(c *fiber.Ctx) error {
 	}
 
 	code := fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
-	utils.SetCode(req.Email, code, 5*time.Minute)
+	// 使用 Redis 设置验证码，有过期时间
+	err = utils.SetCode(req.Email, code, 5*time.Minute)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "验证码存储失败",
+		})
+	}
 
+	// 发邮件
 	if err := utils.SendEmail(req.Email, code); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "验证码发送失败",

@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineExpose } from 'vue'
 import axios from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -64,6 +64,7 @@ const editingNode = ref({
   name: '',
   address: ''
 })
+const nodeTimer = ref(null)
 
 const loadNodes = async () => {
   const res = await axios.get('/auth/nodes')
@@ -114,6 +115,23 @@ const deleteNode = async (id) => {
 
 onMounted(() => {
   loadNodes()
-  setInterval(loadNodes, 5000)
+  nodeTimer.value = setInterval(loadNodes, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (nodeTimer.value) {
+    clearInterval(nodeTimer.value)
+    nodeTimer.value = null
+  }
+})
+
+function stopNodeTimer() {
+  if (nodeTimer.value) {
+    clearInterval(nodeTimer.value)
+    nodeTimer.value = null
+  }
+}
+defineExpose({
+  stopNodeTimer
 })
 </script>

@@ -14,7 +14,7 @@ func Setup(app *fiber.App) {
 	api.Post("/register", handlers.Register)
 	api.Post("/reset-password", handlers.ResetPassword)
 	api.Post("/send-code", handlers.SendCode)
-	
+
 	auth := api.Group("/auth", middleware.AuthRequired)
 
 	auth.Get("/scripts", handlers.GetScripts)
@@ -36,6 +36,4 @@ func Setup(app *fiber.App) {
 	auth.Get("/logs", handlers.GetLogs)
 	auth.Delete("/logs/:id", handlers.DeleteLog)
 	auth.Delete("/logs", handlers.ClearLogs)
-
-
 }

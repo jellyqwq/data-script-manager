@@ -2,10 +2,10 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
-	"fmt"
 
 	"github.com/jellyqwq/data-script-manager/backend/db"
 	"github.com/jellyqwq/data-script-manager/backend/models"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	c      *cron.Cron               = cron.New()
+	c      *cron.Cron              = cron.New()
 	jobMap map[string]cron.EntryID = make(map[string]cron.EntryID)
 )
 
@@ -107,7 +107,7 @@ func registerSchedule(sched models.ScheduleItem) {
 
 	entryID, err := c.AddFunc(sched.Cron, func() {
 		log.Printf("[调度器] 执行任务 ID=%s 路径=%s\n", sched.ID.Hex(), scriptPath)
-		RunScript(sched.ScriptID, scriptPath)
+		RunScript(sched.ScriptID, sched.UserID, scriptPath)
 	})
 	if err != nil {
 		log.Printf("[调度器] 注册任务失败 ID=%s：%v\n", sched.ID.Hex(), err)

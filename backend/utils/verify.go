@@ -1,43 +1,27 @@
 package utils
 
 import (
-	"sync"
+	"context"
+	"fmt"
 	"time"
+
+	"github.com/jellyqwq/data-script-manager/backend/db"
 )
 
-type CodeEntry struct {
-	Code      string
-	ExpiresAt time.Time
+// 设置验证码
+func SetCode(email string, code string, duration time.Duration) error {
+	key := fmt.Sprintf("code:%s", email)
+	return db.Redis.Set(context.Background(), key, code, duration).Err()
 }
 
-var codeStore = make(map[string]CodeEntry)
-var mu sync.Mutex
-
-// 设置验证码（覆盖旧的）
-func SetCode(email string, code string, duration time.Duration) {
-	mu.Lock()
-	defer mu.Unlock()
-	codeStore[email] = CodeEntry{
-		Code:      code,
-		ExpiresAt: time.Now().Add(duration),
-	}
-}
-
-// 校验验证码是否正确
+// 校验验证码
 func VerifyCode(email string, code string) bool {
-	mu.Lock()
-	defer mu.Unlock()
-	entry, exists := codeStore[email]
-	if !exists {
+	key := fmt.Sprintf("code:%s", email)
+	val, err := db.Redis.Get(context.Background(), key).Result()
+	if err != nil || val != code {
 		return false
 	}
-	if time.Now().After(entry.ExpiresAt) {
-		delete(codeStore, email)
-		return false
-	}
-	if entry.Code != code {
-		return false
-	}
-	delete(codeStore, email) // 验证成功后删除（一次性）
+	// 验证成功后删除（一次性）
+	db.Redis.Del(context.Background(), key)
 	return true
 }

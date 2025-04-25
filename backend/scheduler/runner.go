@@ -14,20 +14,20 @@ import (
 	"github.com/jellyqwq/data-script-manager/backend/db"
 )
 
-func RunScript(scriptID primitive.ObjectID, scriptPath string) {
+func RunScript(scriptID primitive.ObjectID, userID primitive.ObjectID, scriptPath string) {
 	cmd := exec.Command("python3", scriptPath)
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
 	_ = cmd.Start()
 
-	go captureLog(stdout, scriptID, "INFO")
-	go captureLog(stderr, scriptID, "ERROR")
+	go captureLog(stdout, scriptID, userID, "INFO")
+	go captureLog(stderr, scriptID, userID, "ERROR")
 
 	_ = cmd.Wait()
 }
 
-func captureLog(pipe io.ReadCloser, scriptID primitive.ObjectID, level string) {
+func captureLog(pipe io.ReadCloser, scriptID primitive.ObjectID, userID primitive.ObjectID, level string) {
 	scanner := bufio.NewScanner(pipe)
 	col := db.Mongo.Database("scriptdb").Collection("logs")
 	ctx := context.Background()
@@ -39,6 +39,7 @@ func captureLog(pipe io.ReadCloser, scriptID primitive.ObjectID, level string) {
 			"timestamp": time.Now(),
 			"level":     level,
 			"message":   line,
+			"user_id":   userID,
 		}
 		_, err := col.InsertOne(ctx, entry)
 		if err != nil {
