@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" version="26.2.12">
+  <diagram name="图 4-14 MongoDB 类图风格 E-R 图" id="mongodb-er-class-diagram">
+    <mxGraphModel dx="1600" dy="960" grid="1" gridSize="10" guides="1" tooltips="1"
+      connect="1" arrows="1" fold="1" page="1" pageScale="1"
+      pageWidth="827" pageHeight="1169" background="none" math="0"
+      shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- User -->
+        <mxCell id="user" value="&lt;b&gt;User&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="60" width="180" height="156" as="geometry"/>
+        </mxCell>
+        <mxCell id="u1" value="+ _id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="user">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="u2" value="+ username: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="user">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="u3" value="+ role: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="user">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="u4" value="+ password_hash: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="user">
+          <mxGeometry y="104" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- Script -->
+        <mxCell id="script" value="&lt;b&gt;Script&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="60" width="180" height="182" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1" value="+ _id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="script">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2" value="+ user_id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="script">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3" value="+ name: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="script">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4" value="+ content: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="script">
+          <mxGeometry y="104" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5" value="+ created_at: Date" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="script">
+          <mxGeometry y="130" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- Dataset -->
+        <mxCell id="dataset" value="&lt;b&gt;Dataset&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="180" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1" value="+ _id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="dataset">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2" value="+ script_id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="dataset">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3" value="+ data: JSON[]" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="dataset">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- EnvVar -->
+        <mxCell id="env" value="&lt;b&gt;EnvVar&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="240" width="180" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="+ _id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="env">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="+ key: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="env">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="+ value: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="env">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- Task -->
+        <mxCell id="task" value="&lt;b&gt;Task&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="260" width="180" height="182" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1" value="+ _id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="task">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2" value="+ script_id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="task">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3" value="+ cron: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="task">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4" value="+ node_id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="task">
+          <mxGeometry y="104" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5" value="+ status: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="task">
+          <mxGeometry y="130" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- Node -->
+        <mxCell id="node" value="&lt;b&gt;Node&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="260" width="180" height="156" as="geometry"/>
+        </mxCell>
+        <mxCell id="n1" value="+ _id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="node">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2" value="+ hostname: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="node">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3" value="+ ip: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="node">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="n4" value="+ cpu_usage: Float" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="node">
+          <mxGeometry y="104" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- Log -->
+        <mxCell id="log" value="&lt;b&gt;LogEntry&lt;/b&gt;" style="swimlane;childLayout=stackLayout;horizontalStack=0;startSize=26;fillColor=none;html=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="420" width="180" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="l1" value="+ task_id: ObjectId" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="log">
+          <mxGeometry y="26" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2" value="+ timestamp: Date" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="log">
+          <mxGeometry y="52" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="l3" value="+ output: String" style="text;align=left;spacingLeft=4;html=1;" vertex="1" parent="log">
+          <mxGeometry y="78" width="180" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- 引用箭头 -->
+        <mxCell id="ref1" style="endArrow=block;" edge="1" parent="1" source="user" target="script">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ref2" style="endArrow=block;" edge="1" parent="1" source="script" target="task"/>
+        <mxCell id="ref3" style="endArrow=block;" edge="1" parent="1" source="script" target="dataset"/>
+        <mxCell id="ref4" style="endArrow=block;" edge="1" parent="1" source="script" target="env"/>
+        <mxCell id="ref5" style="endArrow=block;" edge="1" parent="1" source="task" target="node"/>
+        <mxCell id="ref6" style="endArrow=block;" edge="1" parent="1" source="task" target="log"/>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
