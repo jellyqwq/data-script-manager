@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,6 +11,7 @@ import (
 	"github.com/jellyqwq/data-script-manager/backend/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func GetScripts(c *fiber.Ctx) error {
@@ -17,19 +19,47 @@ func GetScripts(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "未授权"})
 	}
+
+	pageStr := c.Query("page", "1")
+	pageSizeStr := c.Query("pageSize", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 || pageSize > 100 {
+		pageSize = 10 // 设置一个合理的默认值和上限
+	}
+
+	skip := (page - 1) * pageSize
+
 	collection := db.Mongo.Database("scriptdb").Collection("scripts")
 
-	cur, err := collection.Find(context.TODO(), bson.M{"user_id": userID})
+	// 查询总数
+	count, err := collection.CountDocuments(context.TODO(), bson.M{"user_id": userID})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "获取总数失败"})
+	}
+
+	// 查询分页数据
+	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize))
+	cur, err := collection.Find(context.TODO(), bson.M{"user_id": userID}, findOptions)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "数据库查询失败"})
 	}
+	defer cur.Close(context.TODO())
 
 	var results []models.Script
 	if err = cur.All(context.TODO(), &results); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "数据解析失败"})
 	}
 
-	return c.JSON(results)
+	return c.JSON(fiber.Map{
+		"items": results,
+		"total": count,
+	})
 }
 
 func CreateScript(c *fiber.Ctx) error {

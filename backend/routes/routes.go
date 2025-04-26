@@ -36,4 +36,10 @@ func Setup(app *fiber.App) {
 	auth.Get("/logs", handlers.GetLogs)
 	auth.Delete("/logs/:id", handlers.DeleteLog)
 	auth.Delete("/logs", handlers.ClearLogs)
+
+	auth.Get("/env-vars", handlers.GetEnvVars)
+	auth.Post("/env-vars", handlers.CreateEnvVar)
+	auth.Put("/env-vars/:id", handlers.UpdateEnvVar)
+	auth.Delete("/env-vars/:id", handlers.DeleteEnvVar)
+
 }

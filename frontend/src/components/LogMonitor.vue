@@ -73,12 +73,23 @@ const logTimer = ref(null)
 
 const loadScripts = async () => {
   try {
-    const res = await axios.get('/auth/scripts')
-    scripts.value = res.data
+    const res = await axios.get('/auth/scripts');
+    console.log("Response from /auth/scripts:", res.data); // 打印响应
+
+    if (res.data && res.data.items && Array.isArray(res.data.items)) {
+      scripts.value = res.data.items;
+    } else if (res.data && Array.isArray(res.data)) {
+      scripts.value = res.data; // 假设直接返回的是数组
+    } else {
+      console.error("Error: /auth/scripts returned unexpected format:", res.data);
+      scripts.value = [];
+    }
   } catch (err) {
-    ElMessage.error('脚本列表获取失败')
+    ElMessage.error('脚本列表获取失败');
+    console.error('脚本列表获取失败:', err);
+    scripts.value = [];
   }
-}
+};
 
 const loadLogs = async () => {
   try {

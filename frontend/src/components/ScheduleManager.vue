@@ -10,9 +10,9 @@
           <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="next_run" label="下次运行" width="180">
+      <el-table-column prop="created_at" label="创建时间" width="180">
         <template #default="{ row }">
-          {{ formatDate(row.next_run) }}
+          {{ formatDate(row.created_at) }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="320">
@@ -72,15 +72,31 @@ const form = ref({
   script_id: '',
   cron: '* * * * *'  // 初始默认值很重要
 })
+const value = ref('* * * * *')
 
 const formatDate = (str) => {
   return new Date(str).toLocaleString()
 }
 
 const loadScripts = async () => {
-  const res = await axios.get('/auth/scripts')
-  scripts.value = res.data
-}
+  try {
+    const res = await axios.get('/auth/scripts');
+    console.log("Response from /auth/scripts:", res.data); // 仍然保留日志输出
+
+    if (res.data && res.data.items && Array.isArray(res.data.items)) {
+      scripts.value = res.data.items; // 从 res.data.items 中获取脚本数组
+    } else if (res.data) {
+      console.error("Error: /auth/scripts returned data in an unexpected format:", res.data);
+      scripts.value = [];
+    } else {
+      console.error("Error: /auth/scripts returned no data.");
+      scripts.value = [];
+    }
+  } catch (error) {
+    console.error("Error loading scripts:", error);
+    scripts.value = [];
+  }
+};
 
 const loadSchedules = async () => {
   const res = await axios.get('/auth/schedules')
@@ -106,16 +122,15 @@ const openDialog = (row = null) => {
       cron: '* * * * *'
     }
   }
+  value.value = '* * * * *'
+  console.log(value.value)
   dialogVisible.value = true
 }
 
-
-
 const submitSchedule = async () => {
   try {
+    form.value.cron = value.value; // ✨ 把cron选择器的值赋给form
     if (form.value.id) {
-      console.log(form)
-      console.log(form.cron)
       await axios.put(`/auth/schedules/${form.value.id}`, {
         cron: form.value.cron
       })
@@ -125,11 +140,13 @@ const submitSchedule = async () => {
       ElMessage.success('添加成功')
     }
     dialogVisible.value = false
+    await loadScripts()
     await loadSchedules()
   } catch (err) {
     ElMessage.error(err.response?.data?.error || '操作失败')
   }
 }
+
 
 const deleteSchedule = async (id) => {
   await ElMessageBox.confirm('确认删除该任务？', '提示', { type: 'warning' })
