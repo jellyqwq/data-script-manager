@@ -36,6 +36,7 @@ func AddSchedule(c *fiber.Ctx) error {
 	var input struct {
 		ScriptID string `json:"script_id"`
 		Cron     string `json:"cron"`
+		NodeID   string `json:"node_id"` // ✨ 新增
 	}
 	uid := utils.GetUserIDFromToken(c)
 
@@ -59,6 +60,15 @@ func AddSchedule(c *fiber.Ctx) error {
 		"cron":       input.Cron,
 		"enabled":    true,
 		"created_at": time.Now(),
+	}
+	if input.NodeID != "" {
+		nodeOID, err := primitive.ObjectIDFromHex(input.NodeID)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "无效的节点ID",
+			})
+		}
+		sched["node_id"] = nodeOID
 	}
 
 	col := db.Mongo.Database("scriptdb").Collection("schedules")
@@ -115,6 +125,7 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	var body struct {
 		Cron    string `json:"cron"`
 		Enabled *bool  `json:"enabled"` // 可选更新
+		NodeID  string `json:"node_id"` // ✨ 新增
 	}
 
 	if err := c.BodyParser(&body); err != nil {
@@ -128,6 +139,14 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	if body.Enabled != nil {
 		update["enabled"] = *body.Enabled
 	}
+	if body.NodeID != "" {
+		nodeOID, err := primitive.ObjectIDFromHex(body.NodeID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "无效的节点ID")
+		}
+		update["node_id"] = nodeOID
+	}
+
 	if len(update) == 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "无有效字段更新")
 	}
