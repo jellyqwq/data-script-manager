@@ -2,6 +2,12 @@
 
 *.docx
 
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+
 # frontend
 # Logs
 frontend/logs
@@ -37,3 +43,4 @@ redis_data
 # backend
 backend/.env
 backend/scripts
+backend/storage

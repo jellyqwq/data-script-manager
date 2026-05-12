@@ -50,6 +50,10 @@ func ParseToken(tokenStr string) (map[string]interface{}, error) {
 
 // ✅ 新增：从 fiber 请求中提取 user_id，并转为 ObjectID
 func GetUserIDFromToken(c *fiber.Ctx) primitive.ObjectID {
+	if IsDevAuthBypassEnabled() {
+		return DevUserID()
+	}
+
 	auth := c.Get("Authorization")
 	tokenStr := strings.TrimPrefix(auth, "Bearer ")
 

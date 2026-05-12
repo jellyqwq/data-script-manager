@@ -80,9 +80,7 @@ func ReloadSchedule(id string) {
 // 注册任务
 func registerSchedule(sched models.ScheduleItem) {
 	scriptCol := db.Mongo.Database("scriptdb").Collection("scripts")
-	var script struct {
-		Content string `bson:"content"`
-	}
+	var script models.Script
 	log.Println(sched)
 	err := scriptCol.FindOne(context.TODO(), bson.M{"_id": sched.ScriptID}).Decode(&script)
 	if err != nil {
@@ -90,24 +88,28 @@ func registerSchedule(sched models.ScheduleItem) {
 		return
 	}
 
-	// 保存为本地 .py 文件
-	scriptPath := fmt.Sprintf("scripts/%s.py", sched.ID.Hex())
-
-	// ✅ 检查 scripts 目录是否存在，不存在就创建
-	if err := os.MkdirAll("scripts", os.ModePerm); err != nil {
-		log.Printf("[调度器] 创建 scripts 目录失败: %v\n", err)
-		return
+	scriptPath := script.FilePath
+	if scriptPath == "" {
+		// 兼容旧数据：旧版本脚本内容直接存在 MongoDB content 字段。
+		scriptPath = fmt.Sprintf("scripts/%s.py", sched.ID.Hex())
+		if err := os.MkdirAll("scripts", os.ModePerm); err != nil {
+			log.Printf("[调度器] 创建 scripts 目录失败: %v\n", err)
+			return
+		}
+		if err := os.WriteFile(scriptPath, []byte(script.Content), 0644); err != nil {
+			log.Printf("[调度器] 写入脚本文件失败 ID=%s：%v\n", sched.ID.Hex(), err)
+			return
+		}
 	}
 
-	err = os.WriteFile(scriptPath, []byte(script.Content), 0644)
-	if err != nil {
-		log.Printf("[调度器] 写入脚本文件失败 ID=%s：%v\n", sched.ID.Hex(), err)
+	if _, err := os.Stat(scriptPath); err != nil {
+		log.Printf("[调度器] 脚本文件不可用 ID=%s 路径=%s：%v\n", sched.ScriptID.Hex(), scriptPath, err)
 		return
 	}
 
 	entryID, err := c.AddFunc(sched.Cron, func() {
 		log.Printf("[调度器] 执行任务 ID=%s 路径=%s\n", sched.ID.Hex(), scriptPath)
-		RunScript(sched.ScriptID, sched.UserID, scriptPath)
+		runScheduleScript(sched, scriptPath)
 	})
 	if err != nil {
 		log.Printf("[调度器] 注册任务失败 ID=%s：%v\n", sched.ID.Hex(), err)
@@ -116,6 +118,74 @@ func registerSchedule(sched models.ScheduleItem) {
 
 	jobMap[sched.ID.Hex()] = entryID
 	log.Printf("[调度器] 成功注册任务 ID=%s\n", sched.ID.Hex())
+}
+
+func runScheduleScript(sched models.ScheduleItem, scriptPath string) {
+	if !sched.UseEnvGroups {
+		RunScript(RunOptions{
+			ScheduleID: sched.ID,
+			ScriptID:   sched.ScriptID,
+			UserID:     sched.UserID,
+			ScriptPath: scriptPath,
+		})
+		return
+	}
+
+	groups := loadScheduleEnvGroups(sched)
+	if len(groups) == 0 {
+		log.Printf("[调度器] 任务 ID=%s 开启变量组运行，但没有可用变量组\n", sched.ID.Hex())
+		return
+	}
+
+	for _, group := range groups {
+		groupID := group.ID
+		RunScript(RunOptions{
+			ScheduleID:   sched.ID,
+			ScriptID:     sched.ScriptID,
+			UserID:       sched.UserID,
+			ScriptPath:   scriptPath,
+			EnvGroupID:   &groupID,
+			EnvGroupName: group.Name,
+			EnvVars:      envPairsToMap(group.Vars),
+		})
+	}
+}
+
+func loadScheduleEnvGroups(sched models.ScheduleItem) []models.EnvGroup {
+	if len(sched.EnvGroupIDs) == 0 {
+		return []models.EnvGroup{}
+	}
+
+	col := db.Mongo.Database("scriptdb").Collection("env_groups")
+	cursor, err := col.Find(context.TODO(), bson.M{
+		"_id":       bson.M{"$in": sched.EnvGroupIDs},
+		"user_id":   sched.UserID,
+		"script_id": sched.ScriptID,
+		"enabled":   true,
+	})
+	if err != nil {
+		log.Printf("[调度器] 查询变量组失败：%v\n", err)
+		return []models.EnvGroup{}
+	}
+	defer cursor.Close(context.TODO())
+
+	var groups []models.EnvGroup
+	if err := cursor.All(context.TODO(), &groups); err != nil {
+		log.Printf("[调度器] 解析变量组失败：%v\n", err)
+		return []models.EnvGroup{}
+	}
+	return groups
+}
+
+func envPairsToMap(pairs []models.EnvPair) map[string]string {
+	env := make(map[string]string, len(pairs))
+	for _, pair := range pairs {
+		if pair.Key == "" {
+			continue
+		}
+		env[pair.Key] = pair.Value
+	}
+	return env
 }
 
 func RemoveSchedule(id string) {

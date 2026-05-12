@@ -13,7 +13,7 @@ const routes = [
     component: Dashboard,
     meta: { requiresAuth: true }
   },
-  { path: '/', redirect: '/login' },
+  { path: '/', redirect: import.meta.env.VITE_AUTH_BYPASS === 'true' ? '/dashboard' : '/login' },
   // 🚨 放在最后，匹配所有未定义路径
   {
     path: '/:pathMatch(.*)*',
@@ -28,9 +28,10 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
+  const authBypass = import.meta.env.VITE_AUTH_BYPASS === 'true'
   console.log('[守卫] token =', token)
 
-  if (to.meta.requiresAuth && !token) {
+  if (to.meta.requiresAuth && !token && !authBypass) {
     console.warn('[守卫] 未登录，跳转 login')
     next('/login')
   } else {

@@ -42,4 +42,9 @@ func Setup(app *fiber.App) {
 	auth.Put("/env-vars/:id", handlers.UpdateEnvVar)
 	auth.Delete("/env-vars/:id", handlers.DeleteEnvVar)
 
+	auth.Get("/env-groups", handlers.GetEnvGroups)
+	auth.Post("/env-groups", handlers.CreateEnvGroup)
+	auth.Put("/env-groups/:id", handlers.UpdateEnvGroup)
+	auth.Delete("/env-groups/:id", handlers.DeleteEnvGroup)
+
 }

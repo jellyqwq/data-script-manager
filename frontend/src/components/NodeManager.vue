@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, defineExpose } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import axios from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 

@@ -1,7 +1,13 @@
 <template>
   <div>
     <div style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center;">
-      <el-select v-model="selectedScript" placeholder="选择脚本" clearable style="width: 200px">
+      <el-select
+        v-model="selectedScript"
+        placeholder="选择脚本"
+        clearable
+        style="width: 200px"
+        @change="handleFilterChange"
+      >
         <el-option
           v-for="s in scripts"
           :key="s.id"
@@ -10,7 +16,13 @@
         />
       </el-select>
 
-      <el-select v-model="selectedLevel" placeholder="日志级别" clearable style="width: 160px">
+      <el-select
+        v-model="selectedLevel"
+        placeholder="日志级别"
+        clearable
+        style="width: 160px"
+        @change="handleFilterChange"
+      >
         <el-option label="全部" value="" />
         <el-option label="INFO" value="INFO" />
         <el-option label="ERROR" value="ERROR" />
@@ -57,62 +69,55 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onBeforeUnmount, defineExpose } from 'vue'
-import axios from '../api'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { clearLogs as clearLogList, deleteLog as removeLog, getLogs } from '../api/logs'
+import { getScripts } from '../api/scripts'
+import { usePolling } from '../composables/usePolling'
+import type { LogEntry, LogQuery } from '../types/log'
+import type { Script } from '../types/script'
 
-const scripts = ref([])
-const logs = ref([])
+const scripts = ref<Script[]>([])
+const logs = ref<LogEntry[]>([])
 const selectedScript = ref('')
 const selectedLevel = ref('')
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
-const logTimer = ref(null)
 
 const loadScripts = async () => {
   try {
-    const res = await axios.get('/auth/scripts');
-    console.log("Response from /auth/scripts:", res.data); // 打印响应
-
-    if (res.data && res.data.items && Array.isArray(res.data.items)) {
-      scripts.value = res.data.items;
-    } else if (res.data && Array.isArray(res.data)) {
-      scripts.value = res.data; // 假设直接返回的是数组
-    } else {
-      console.error("Error: /auth/scripts returned unexpected format:", res.data);
-      scripts.value = [];
-    }
+    const data = await getScripts()
+    scripts.value = data.items
   } catch (err) {
-    ElMessage.error('脚本列表获取失败');
-    console.error('脚本列表获取失败:', err);
-    scripts.value = [];
+    ElMessage.error('脚本列表获取失败')
+    scripts.value = []
   }
-};
+}
 
 const loadLogs = async () => {
   try {
-    const params = {
+    const params: LogQuery = {
       page: page.value,
       page_size: pageSize
     }
     if (selectedScript.value) params.script_id = selectedScript.value
     if (selectedLevel.value) params.level = selectedLevel.value
 
-    const res = await axios.get('/auth/logs', { params })
-    logs.value = res.data.data
-    total.value = res.data.total
+    const data = await getLogs(params)
+    logs.value = data.data
+    total.value = data.total
   } catch (err) {
     ElMessage.error('日志获取失败')
   }
 }
 
-const formatDate = (ts) => {
+const formatDate = (ts: string) => {
   return new Date(ts).toLocaleString()
 }
 
-const levelColor = (level) => {
+const levelColor = (level: string) => {
   switch (level) {
     case 'INFO': return 'success'
     case 'ERROR': return 'danger'
@@ -121,16 +126,21 @@ const levelColor = (level) => {
   }
 }
 
-const handlePageChange = (newPage) => {
-  page.value = newPage
-  loadLogs()
+const handleFilterChange = () => {
+  page.value = 1
+  void loadLogs()
 }
 
-const deleteLog = async (id) => {
+const handlePageChange = (newPage: number) => {
+  page.value = newPage
+  void loadLogs()
+}
+
+const deleteLog = async (id: string) => {
   try {
-    await axios.delete(`/auth/logs/${id}`)
+    await removeLog(id)
     ElMessage.success('日志已删除')
-    loadLogs()
+    void loadLogs()
   } catch (err) {
     ElMessage.error('删除失败')
   }
@@ -139,35 +149,24 @@ const deleteLog = async (id) => {
 const clearLogs = async () => {
   try {
     await ElMessageBox.confirm('确定要清空所有日志吗？', '警告', { type: 'warning' })
-    await axios.delete('/auth/logs')
+    await clearLogList()
     ElMessage.success('日志已清空')
-    loadLogs()
+    void loadLogs()
   } catch (err) {
     ElMessage.error('清空失败')
   }
 }
 
-onMounted(() => {
-  loadScripts()
-  loadLogs()
-  logTimer.value = setInterval(loadLogs, 10000) // 每 10 秒自动刷新
+const { start: startLogPolling, stop: stopLogPolling } = usePolling(loadLogs, 10000)
+
+onMounted(async () => {
+  await loadScripts()
+  await loadLogs()
+  startLogPolling()
 })
 
-onBeforeUnmount(() => {
-  if (logTimer.value) {
-    clearInterval(logTimer.value)
-    logTimer.value = null
-  }
-})
-
-function stopLogTimer() {
-  if (logTimer.value) {
-    clearInterval(logTimer.value)
-    logTimer.value = null
-  }
-}
 defineExpose({
-  stopLogTimer
+  stopLogTimer: stopLogPolling
 })
 </script>
 

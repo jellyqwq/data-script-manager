@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"context"
-	"time"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
-	
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/jellyqwq/data-script-manager/backend/db"
 	"github.com/jellyqwq/data-script-manager/backend/models"
@@ -24,7 +25,6 @@ type Node struct {
 	Online    bool               `bson:"online" json:"online"`
 	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 }
-
 
 // 获取所有节点
 func GetNodes(c *fiber.Ctx) error {
@@ -101,4 +101,29 @@ func DeleteNode(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "删除成功"})
+}
+
+// 执行节点注册或心跳更新（由执行节点周期性调用）
+func RegisterOrUpdateNode(c *fiber.Ctx) error {
+	var node models.Node
+	if err := c.BodyParser(&node); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "请求参数错误"})
+	}
+
+	col := db.Mongo.Database("scriptdb").Collection("nodes")
+
+	node.UpdatedAt = time.Now()
+	node.Online = true
+
+	// 以 Address 为主键进行 upsert（存在则更新，不存在则插入）
+	filter := bson.M{"address": node.Address}
+	update := bson.M{"$set": node}
+	opts := options.Update().SetUpsert(true)
+
+	_, err := col.UpdateOne(context.TODO(), filter, update, opts)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "注册失败"})
+	}
+
+	return c.JSON(fiber.Map{"message": "节点已注册或心跳更新"})
 }

@@ -8,6 +8,10 @@ import (
 )
 
 func AuthRequired(c *fiber.Ctx) error {
+	if utils.IsDevAuthBypassEnabled() {
+		return c.Next()
+	}
+
 	auth := c.Get("Authorization")
 	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{

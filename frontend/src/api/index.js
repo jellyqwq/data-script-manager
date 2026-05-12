@@ -1,17 +1,9 @@
-import axios from 'axios'
+import request from './request'
 
-const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || '/api',
-  timeout: 5000
-})
+export { getLogs, deleteLog, clearLogs } from './logs'
+export { getScripts } from './scripts'
+export { getEnvGroups, createEnvGroup, updateEnvGroup, deleteEnvGroup } from './envGroups'
+export { fetchNodes } from './nodes'
+export { submitDistributedTask, fetchDistributedTasks } from './distributedTasks'
 
-// 自动添加 Authorization 头
-instance.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-export default instance
+export default request

@@ -28,7 +28,7 @@
     <el-dialog :title="form.id ? '编辑任务' : '新建任务'" v-model="dialogVisible">
       <el-form :model="form" label-width="90px">
         <el-form-item label="脚本">
-          <el-select v-model="form.script_id" placeholder="请选择脚本">
+          <el-select v-model="form.script_id" placeholder="请选择脚本" @change="handleScriptChange">
             <el-option v-for="item in scripts" :key="item.id" :label="item.script_name" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -41,8 +41,26 @@
         </el-form-item>
 
         <el-form-item label="Cron表达式">
-          <cron-element-plus v-model="value" :button-props="{ type: 'primary' }" @error="error = $event" />
+          <cron-element-plus v-model="value" :button-props="{ type: 'primary' }" @error="cronError = $event" />
           <p class="text-lightest pt-2">cron expression: {{ value }}</p>
+        </el-form-item>
+
+        <el-form-item label="变量组运行">
+          <el-switch v-model="form.use_env_groups" />
+        </el-form-item>
+
+        <el-form-item v-if="form.use_env_groups" label="变量组">
+          <el-select v-model="form.env_group_ids" multiple placeholder="请选择变量组" style="width: 100%">
+            <el-option
+              v-for="item in envGroups"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            开启后，同一脚本会按选中的变量组分别执行。
+          </div>
         </el-form-item>
       </el-form>
 
@@ -60,19 +78,24 @@ import axios from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import '@vue-js-cron/light/dist/light.css'
 import { CronElementPlus } from '@vue-js-cron/element-plus'
+import { getEnvGroups } from '../api/envGroups'
 
 const schedules = ref([])
 const scripts = ref([])
 const nodes = ref([])
+const envGroups = ref([])
 
 const dialogVisible = ref(false)
 const form = ref({
   id: '',
   script_id: '',
   cron: '* * * * *',
-  node_id: ''
+  node_id: '',
+  use_env_groups: false,
+  env_group_ids: []
 })
 const value = ref('* * * * *')
+const cronError = ref(null)
 
 const formatDate = (str) => new Date(str).toLocaleString()
 
@@ -115,19 +138,43 @@ const openDialog = (row = null) => {
       id: row.id,
       script_id: row.script_id,
       cron: row.cron || '* * * * *',
-      node_id: row.node_id || ''
+      node_id: row.node_id || '',
+      use_env_groups: row.use_env_groups || false,
+      env_group_ids: row.env_group_ids || []
     }
     value.value = row.cron || '* * * * *'
+    loadEnvGroups(row.script_id)
   } else {
     form.value = {
       id: '',
       script_id: '',
       cron: '* * * * *',
-      node_id: ''
+      node_id: '',
+      use_env_groups: false,
+      env_group_ids: []
     }
     value.value = '* * * * *'
+    envGroups.value = []
   }
   dialogVisible.value = true
+}
+
+const loadEnvGroups = async (scriptId) => {
+  if (!scriptId) {
+    envGroups.value = []
+    return
+  }
+  try {
+    const data = await getEnvGroups(scriptId)
+    envGroups.value = data.items
+  } catch (error) {
+    envGroups.value = []
+  }
+}
+
+const handleScriptChange = async (scriptId) => {
+  form.value.env_group_ids = []
+  await loadEnvGroups(scriptId)
 }
 
 const submitSchedule = async () => {
@@ -135,6 +182,7 @@ const submitSchedule = async () => {
     form.value.cron = value.value
     const payload = { ...form.value }
     if (!payload.node_id) delete payload.node_id
+    if (!payload.use_env_groups) payload.env_group_ids = []
     if (form.value.id) {
       await axios.put(`/auth/schedules/${form.value.id}`, payload)
       ElMessage.success('修改成功')

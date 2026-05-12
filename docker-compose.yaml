@@ -1,4 +1,43 @@
 services:
+  backend:
+    build:
+      context: ./backend
+    container_name: dsm_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: "27017"
+      MONGODB_USER: admin
+      MONGODB_PASSWORD: admin123
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ""
+      PYTHON_BIN: /usr/local/bin/python
+      SCRIPT_STORAGE_DIR: /app/storage/scripts
+      SCRIPT_STATE_DIR: /app/storage/state
+      SMTP_ACCOUNT: ${SMTP_ACCOUNT:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      DEV_AUTH_BYPASS: ${DEV_AUTH_BYPASS:-false}
+      DEV_AUTH_BYPASS_USER_ID: ${DEV_AUTH_BYPASS_USER_ID:-000000000000000000000001}
+    volumes:
+      - ./backend/storage:/app/storage
+    depends_on:
+      - mongodb
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: /api
+    container_name: dsm_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
   mongodb:
     image: mongo:6.0
     container_name: scriptdb_mongo
@@ -19,4 +58,3 @@ services:
     volumes:
       - ./redis_data:/data # 持久化数据
     restart: unless-stopped
-

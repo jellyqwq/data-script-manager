@@ -2,13 +2,23 @@ package utils
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ExtractUserID(c *fiber.Ctx) (primitive.ObjectID, error) {
+	if IsDevAuthBypassEnabled() {
+		userID := DevUserID()
+		if userID == primitive.NilObjectID {
+			return primitive.NilObjectID, errors.New("开发用户 ID 无效")
+		}
+		return userID, nil
+	}
+
 	auth := c.Get("Authorization")
-	if auth == "" {
+	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
 		return primitive.NilObjectID, errors.New("无 token")
 	}
 	token := auth[len("Bearer "):]

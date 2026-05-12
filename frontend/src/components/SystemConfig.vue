@@ -1,130 +1,252 @@
 <template>
   <div>
-    <el-button type="primary" @click="openDialog">新增变量</el-button>
+    <div class="toolbar">
+      <el-select
+        v-model="selectedScriptId"
+        placeholder="选择脚本"
+        clearable
+        filterable
+        style="width: 260px"
+        @change="handleScriptChange"
+      >
+        <el-option
+          v-for="script in scripts"
+          :key="script.id"
+          :label="script.script_name"
+          :value="script.id"
+        />
+      </el-select>
 
-    <el-table
-      :data="paginatedEnvVars"
-      style="margin-top: 20px"
-      @sort-change="handleSortChange"
-      :default-sort="{ prop: 'key', order: 'ascending' }"
-    >
-      <el-table-column prop="key" label="变量名" sortable />
-      <el-table-column prop="value" label="变量值" />
+      <el-button type="primary" :disabled="!selectedScriptId" @click="openDialog()">新增变量组</el-button>
+      <el-button @click="loadGroups">刷新</el-button>
+    </div>
+
+    <el-table :data="groups" style="margin-top: 20px">
+      <el-table-column prop="name" label="变量组" width="180" />
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="row.enabled ? 'success' : 'info'">
+            {{ row.enabled ? '启用' : '停用' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="变量数量" width="100">
+        <template #default="{ row }">
+          {{ row.vars?.length ?? 0 }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="updated_at" label="更新时间" width="190">
+        <template #default="{ row }">
+          {{ formatDate(row.updated_at) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="180">
         <template #default="{ row }">
           <el-button size="small" @click="openDialog(row)">编辑</el-button>
-          <el-button size="small" type="danger" @click="deleteEnvVar(row.id)">删除</el-button>
+          <el-button size="small" type="danger" @click="deleteGroup(row.id)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <el-pagination
-      v-model:current-page="currentPage"
-      v-model:page-size="pageSize"
-      :page-sizes="[10, 20, 50, 100]"
-      :total="totalEnvVars"
-      layout="total, sizes, prev, pager, next, jumper"
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
-      style="margin-top: 20px; display: flex; justify-content: center;"
-    >
-    </el-pagination>
+    <el-empty v-if="selectedScriptId && groups.length === 0" description="当前脚本还没有变量组" />
+    <el-empty v-if="!selectedScriptId" description="请先选择脚本，再配置变量组" />
 
-    <el-dialog :title="form._id ? '编辑变量' : '新增变量'" v-model="dialogVisible">
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="变量名">
-          <el-input v-model="form.key" />
+    <el-dialog :title="form.id ? '编辑变量组' : '新增变量组'" v-model="dialogVisible" width="760px">
+      <el-form :model="form" label-width="90px">
+        <el-form-item label="所属脚本">
+          <el-select v-model="form.script_id" placeholder="选择脚本" filterable style="width: 100%">
+            <el-option
+              v-for="script in scripts"
+              :key="script.id"
+              :label="script.script_name"
+              :value="script.id"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="变量值">
-          <el-input v-model="form.value" />
+        <el-form-item label="组名称">
+          <el-input v-model="form.name" placeholder="例如：我的账号、朋友A、测试账号" />
+        </el-form-item>
+        <el-form-item label="是否启用">
+          <el-switch v-model="form.enabled" />
+        </el-form-item>
+        <el-form-item label="变量">
+          <div class="env-pairs">
+            <div v-for="(item, index) in form.vars" :key="index" class="env-row">
+              <el-input v-model="item.key" placeholder="变量名，如 COOKIE" />
+              <el-input v-model="item.value" placeholder="变量值" show-password />
+              <el-button type="danger" text @click="removePair(index)">删除</el-button>
+            </div>
+            <el-button @click="addPair">新增变量</el-button>
+          </div>
         </el-form-item>
       </el-form>
+
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveEnvVar">保存</el-button>
+        <el-button type="primary" @click="saveGroup">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, computed } from 'vue'
-import axios from '../api'
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { createEnvGroup, deleteEnvGroup, getEnvGroups, updateEnvGroup } from '../api/envGroups'
+import { getScripts } from '../api/scripts'
+import type { EnvGroup, EnvGroupPayload, EnvPair } from '../types/envGroup'
+import type { Script } from '../types/script'
 
-const envVars = ref([])
+const scripts = ref<Script[]>([])
+const groups = ref<EnvGroup[]>([])
+const selectedScriptId = ref('')
 const dialogVisible = ref(false)
-const form = ref({ _id: '', key: '', value: '' })
+const form = ref<EnvGroupPayload & { id: string }>({
+  id: '',
+  script_id: '',
+  name: '',
+  enabled: true,
+  vars: [{ key: '', value: '' }],
+})
 
-const currentPage = ref(1)
-const pageSize = ref(10)
-const totalEnvVars = ref(0)
-const sortBy = ref('key')
-const sortOrder = ref('asc')
-
-const loadEnvVars = async (page = currentPage.value, size = pageSize.value, sortField = sortBy.value, sortDirection = sortOrder.value) => {
-  try {
-    const res = await axios.get(`/auth/env-vars?page=${page}&pageSize=${size}&sortBy=${sortField}&sortOrder=${sortDirection}`)
-    envVars.value = res.data.items // 假设你的后端返回的数据结构是 { items: [], total: number }
-    totalEnvVars.value = res.data.total
-  } catch (err) {
-    ElMessage.error('加载环境变量失败')
-    console.error('加载环境变量失败:', err)
+const loadScripts = async () => {
+  const data = await getScripts({ page: 1, pageSize: 100 })
+  scripts.value = data.items
+  if (!selectedScriptId.value && scripts.value.length > 0) {
+    selectedScriptId.value = scripts.value[0].id
   }
 }
 
-const paginatedEnvVars = computed(() => {
-  // 如果后端已经做了分页和排序，则不需要前端再处理
-  return envVars.value
-})
+const loadGroups = async () => {
+  if (!selectedScriptId.value) {
+    groups.value = []
+    return
+  }
 
-const openDialog = (row = null) => {
+  try {
+    const data = await getEnvGroups(selectedScriptId.value)
+    groups.value = data.items
+  } catch (err) {
+    ElMessage.error('加载变量组失败')
+  }
+}
+
+const handleScriptChange = async () => {
+  await loadGroups()
+}
+
+const openDialog = (row: EnvGroup | null = null) => {
   if (row) {
-    form.value = { ...row }
+    form.value = {
+      id: row.id,
+      script_id: row.script_id,
+      name: row.name,
+      enabled: row.enabled,
+      vars: clonePairs(row.vars),
+    }
   } else {
-    form.value = { _id: '', key: '', value: '' }
+    form.value = {
+      id: '',
+      script_id: selectedScriptId.value,
+      name: '',
+      enabled: true,
+      vars: [{ key: '', value: '' }],
+    }
   }
   dialogVisible.value = true
 }
 
-const saveEnvVar = async () => {
-  try {
-    if (form.value.id) {
-      await axios.put(`/auth/env-vars/${form.value.id}`, form.value)
-    } else {
-      await axios.post('/auth/env-vars', form.value)
-    }
-    ElMessage.success('保存成功')
-    dialogVisible.value = false
-    await loadEnvVars()
-  } catch (err) {
-    ElMessage.error(err.response?.data?.error || '保存失败')
+const addPair = () => {
+  form.value.vars.push({ key: '', value: '' })
+}
+
+const removePair = (index: number) => {
+  form.value.vars.splice(index, 1)
+  if (form.value.vars.length === 0) {
+    addPair()
   }
 }
 
-const deleteEnvVar = async (id) => {
-  await ElMessageBox.confirm('确认删除该变量？', '提示', { type: 'warning' })
-  await axios.delete(`/auth/env-vars/${id}`)
-  ElMessage.success('删除成功')
-  await loadEnvVars()
+const saveGroup = async () => {
+  if (!form.value.script_id) {
+    ElMessage.warning('请先选择脚本')
+    return
+  }
+  if (!form.value.name.trim()) {
+    ElMessage.warning('请填写变量组名称')
+    return
+  }
+
+  const payload: EnvGroupPayload = {
+    script_id: form.value.script_id,
+    name: form.value.name,
+    enabled: form.value.enabled,
+    vars: form.value.vars.filter((item) => item.key.trim()),
+  }
+
+  try {
+    if (form.value.id) {
+      await updateEnvGroup(form.value.id, payload)
+      ElMessage.success('变量组已更新')
+    } else {
+      await createEnvGroup(payload)
+      ElMessage.success('变量组已创建')
+    }
+    dialogVisible.value = false
+    selectedScriptId.value = payload.script_id
+    await loadGroups()
+  } catch (err) {
+    ElMessage.error('保存变量组失败')
+  }
 }
 
-const handleSizeChange = (newSize) => {
-  pageSize.value = newSize
-  currentPage.value = 1
-  loadEnvVars()
+const deleteGroup = async (id: string) => {
+  try {
+    await ElMessageBox.confirm('确认删除该变量组？', '提示', { type: 'warning' })
+    await deleteEnvGroup(id)
+    ElMessage.success('删除成功')
+    await loadGroups()
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
-const handleCurrentChange = (newPage) => {
-  currentPage.value = newPage
-  loadEnvVars()
+const formatDate = (value?: string) => {
+  return value ? new Date(value).toLocaleString() : '-'
 }
 
-const handleSortChange = ({ prop, order }) => {
-  sortBy.value = prop
-  sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
-  loadEnvVars()
+const clonePairs = (pairs: EnvPair[] = []) => {
+  if (pairs.length === 0) return [{ key: '', value: '' }]
+  return pairs.map((item) => ({ key: item.key, value: item.value }))
 }
 
-onMounted(loadEnvVars)
+onMounted(async () => {
+  try {
+    await loadScripts()
+    await loadGroups()
+  } catch (err) {
+    ElMessage.error('初始化环境变量组失败')
+  }
+})
 </script>
+
+<style scoped>
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.env-pairs {
+  width: 100%;
+}
+
+.env-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+</style>
